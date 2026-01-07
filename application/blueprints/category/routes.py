@@ -37,4 +37,22 @@ def get_category(category_id):
 
     if category:
         return category_schema.jsonify(category), 200
-    return jsonify({"error": "Category not found."}), 404
+    
+
+@categories_bp.route('/<int:category_id>', methods=['PUT'])
+def update_category(category_id):
+    category = db.session.get(Category, category_id)
+
+    # if not current_user.is_authenticated or current_user.role.name != 'Supervisor':
+    #     abort(403, description="Admin privileges required.")
+
+    if not category:
+        return jsonify({"error": "Category not found."}), 404
+    try:
+        category_data = category_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+    category.name = category_data['name']
+        
+    db.session.commit()
+    return category_schema.jsonify(category), 200

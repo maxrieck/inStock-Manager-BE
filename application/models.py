@@ -89,6 +89,11 @@ class Location(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(db.String(100), unique=True, nullable=False)
+    type: Mapped[str] = mapped_column(db.String(50), nullable=False)
+    # this is for a soft delete. 
+    is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=lambda: datetime.now(UTC))
+    deleted_at: Mapped[datetime] = mapped_column(db.DateTime, default=None, nullable=True)
 
     inventory = db.relationship("Inventory", back_populates="location")
 
