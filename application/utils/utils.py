@@ -32,11 +32,12 @@ def token_required(f):
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
             user_role = data.get('role')
+            user_id = data.get('sub')
         except jose.exceptions.ExpiredSignatureError:
             return jsonify({'message':'Token has expired!'}), 401
         except jose.exceptions.JWTError:
             return jsonify({'message':"Invalid token!"}), 401
         
-        return f(*args, current_user_role=user_role, **kwargs)
+        return f(*args, current_user_id=user_id, current_user_role=user_role, **kwargs)
     
     return decorated

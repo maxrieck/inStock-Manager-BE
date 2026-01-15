@@ -100,7 +100,7 @@ def delete_user_self(user_id):
 # Admin user to delete specific user
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
 @token_required
-def delete_user(current_user_role, user_id):
+def delete_user(current_user_role, user_id, current_user_id):
 
     if current_user_role!= 'Admin':
         return jsonify({'error':"Admin privileges required"}), 403
