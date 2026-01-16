@@ -24,3 +24,20 @@ def create_transaction(current_user_role, current_user_id):
     )
 
     return StockTransactionReadSchema().dump(transaction), 201
+
+
+@stock_transactions_bp.route('/', methods=['GET'])
+def list_transactions():
+    query = select(StockTransaction)
+    transactions = db.session.execute(query).scalars().all()
+
+    return StockTransactionReadSchema(many=True).dump(transactions)
+
+
+@stock_transactions_bp.route('/<int:tx_id>')
+def get_transaction(tx_id):
+    transaction = db.session.get(StockTransaction, tx_id)
+
+    if transaction:
+        return StockTransactionReadSchema().dump(transaction), 200
+    return jsonify({"error": "Transaction not found."}), 404

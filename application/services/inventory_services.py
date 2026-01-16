@@ -16,7 +16,7 @@ class InventoryService:
             inventory = Inventory(
                 product_id=product_id,
                 location_id=location_id,
-                quantity=0  # start at 0
+                quantity=0
             )
             db.session.add(inventory)
             db.session.flush()
