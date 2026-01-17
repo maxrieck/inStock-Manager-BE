@@ -8,7 +8,7 @@ from application.services.inventory_services import InventoryService
 from application.utils.utils import token_required
 #from application.extensions import limiter, cache
 
-
+#make route check if location is active first
 @stock_transactions_bp.route('/', methods=['POST'])
 @token_required
 def create_transaction(current_user_role, current_user_id):
