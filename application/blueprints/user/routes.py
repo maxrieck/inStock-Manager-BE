@@ -1,10 +1,10 @@
 from . import users_bp
-from .userSchemas import UserCreateSchema, UserReadSchema
+from .userSchemas import UserCreateSchema, UserReadSchema, UserUpdateSchema
 from sqlalchemy import select
 from flask import request, jsonify, abort
 from marshmallow import ValidationError
 from application.models import User, db, Role
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from application.utils.utils import encode_token, token_required
 #from application.extensions import limiter, cache
 
@@ -21,7 +21,7 @@ def login():
     query = select(User).where(User.email==email)
     user = db.session.execute(query).scalar_one_or_none()
 
-    if user and user.password == password:
+    if user and user.is_active and check_password_hash(user.password, password):
         auth_token = encode_token(user.id, user.role.name)
 
         response = {
@@ -68,13 +68,14 @@ def get_user(user_id):
 
 
 @users_bp.route('/<int:user_id>', methods=['PUT'])
-def update_user(user_id):
+@token_required
+def update_user(current_user_role, user_id, current_user_id):
     user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({"error": "User not found."}), 404
     try:
-        user_data = UserCreateSchema(session=db.session).load(request.json)
+        user_data = UserUpdateSchema(session=db.session).load(request.json)
     except ValidationError as e:
         return jsonify(e.messages), 400
     user.first_name = user_data.first_name
@@ -82,43 +83,44 @@ def update_user(user_id):
     user.email = user_data.email
     
     db.session.commit()
-    return UserCreateSchema().dump(user), 200
+    return UserUpdateSchema().dump(user), 200
 
-# User delete their own account
-@users_bp.route('/', methods=['DELETE'])
+
+# User deactivate their own account (soft delete)
+@users_bp.route('/<int:user_id>/deactivate', methods=['PUT'])
 @token_required
-def delete_user_self(user_id):
+def deactivate_user_self(current_user_role, user_id, current_user_id):
     user = db.session.get(User, user_id)
-
     if not user:
-        return jsonify({"error":"User not found"}), 404
-
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({'message':f"Succesfully deleted user {user_id}"})
-
-# Admin user to delete specific user
-@users_bp.route('/<int:user_id>', methods=['DELETE'])
-@token_required
-def delete_user(current_user_role, user_id, current_user_id):
-
-    if current_user_role!= 'Admin':
-        return jsonify({'error':"Admin privileges required"}), 403
-
-    target_user = db.session.get(User, user_id)
-    if not target_user:
         return jsonify({"error": "User not found"}), 404
-
-    db.session.delete(target_user)
+    user.is_active = False
     db.session.commit()
-    return jsonify({"message": f"User {user_id} deleted successfully."}), 200
+    return jsonify({'message': f"User {user_id} deactivated (soft deleted)."})
+
+# Admin deactivate/reactivate a user
+@users_bp.route('/<int:user_id>/active', methods=['PUT'])
+@token_required
+def set_user_active_status(current_user_role, user_id, current_user_id):
+    if current_user_role != 'Admin':
+        return jsonify({'error': "Admin privileges required"}), 403
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    data = request.get_json()
+    is_active = data.get('is_active')
+    if is_active is None:
+        return jsonify({"error": "is_active field is required (true/false)"}), 400
+    user.is_active = bool(is_active)
+    db.session.commit()
+    return jsonify({"message": f"User {user_id} active status set to {user.is_active}."}), 200
 
 
 @users_bp.route('/<int:user_id>/role', methods=['PUT'])
-def assign_role(user_id):
+@token_required
+def assign_role(current_user_role, user_id, current_user_id):
     
-    # if not current_user.is_authenticated or current_user.role.name != 'Admin':
-    #     abort(403, description="Admin privileges required.")
+    if current_user_role!= 'Admin':
+        return jsonify({'error':"Admin privileges required"}), 403
 
     user = db.session.get(User, user_id)
     if not user:

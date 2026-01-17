@@ -27,4 +27,12 @@ class UserReadSchema(SQLAlchemySchema):
     created_at = auto_field()
     role = ma.Nested("RoleSchema")
 
-    
+class UserUpdateSchema(SQLAlchemySchema):
+    class Meta:
+        model = User
+        load_instance = True
+
+    first_name = auto_field(required=True)
+    last_name = auto_field(required=True)
+    email = auto_field(required=True)
+      
